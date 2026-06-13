@@ -2,7 +2,7 @@
   "name": "카드뉴스 제목 생성기",
   "short_name": "카드뉴스",
   "description": "이미지에 AI 제목을 얹어주는 카드뉴스 생성기",
-  "start_url": "/-카드뉴스/",
+  "start_url":  "/-cardnews/"
   "scope": "/-카드뉴스/",
   "display": "standalone",
   "background_color": "#0f0f0f",
