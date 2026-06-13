@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="카드뉴스">
+<title>카드뉴스 제목 생성기</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="theme-color" content="#0f0f0f">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Black+Han+Sans&family=Jua&family=Do+Hyeon&family=Gaegu:wght@700&family=Sunflower:wght@700&family=Nanum+Pen+Script&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --border: #2e2e2e;
+    --text: #ffffff;
+    --muted: #888;
+    --accent: #ffffff;
+    --danger-bg: #2a1010;
+    --danger-border: #5a2020;
+    --danger-text: #ff8080;
+    --radius: 10px;
+    --max-w: 520px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 14px 80px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 3px; }
+  .subtitle { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+
+  .card { width: 100%; max-width: var(--max-w); }
+
+  /* API key section */
+  .api-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .api-section summary {
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .api-section summary::before { content: '🔑'; }
+  .api-section[open] summary::before { content: '🔑'; }
+  .api-section summary .arrow { transition: transform 0.2s; font-size: 10px; }
+  .api-section[open] summary .arrow { transform: rotate(90deg); }
+  .api-row { margin-top: 10px; display: flex; gap: 8px; }
+  .api-row input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: monospace;
+    outline: none;
+  }
+  .api-row button {
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .api-status { font-size: 11px; margin-top: 6px; }
+  .api-status.ok { color: #5fdf8f; }
+  .api-status.no { color: var(--muted); }
+
+  /* Upload zone */
+  .upload-zone {
+    width: 100%;
+    max-width: var(--max-w);
+    height: 160px;
+    border: 2px dashed var(--border);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .upload-zone:active { border-color: #666; }
+  .upload-zone .icon { font-size: 30px; }
+  .upload-zone .label { color: var(--muted); font-size: 13px; }
+
+  /* Preview */
+  .preview-wrap {
+    width: 100%;
+    max-width: var(--max-w);
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .preview-wrap img { width: 100%; display: block; }
+  .overlay {
+    position: absolute;
+    left: 0; right: 0;
+    padding: 24px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .overlay.bottom {
+    bottom: 0;
+    background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.65) 28%, rgba(0,0,0,0.82));
+  }
+  .overlay.top {
+    top: 0;
+    justify-content: flex-start;
+    padding-top: 20px;
+    background: linear-gradient(to top, transparent, rgba(0,0,0,0.65) 28%, rgba(0,0,0,0.82));
+  }
+  .overlay.center {
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.6);
+    justify-content: center;
+  }
+  .overlay-line {
+    font-weight: 800;
+    line-height: 1.3;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+    letter-spacing: -0.5px;
+    word-break: keep-all;
+    margin-top: 2px;
+    color: #fff;
+  }
+
+  .change-btn {
+    margin-top: 6px;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Error */
+  .error-box {
+    width: 100%;
+    max-width: var(--max-w);
+    margin-top: 10px;
+    padding: 9px 13px;
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
+    border-radius: 8px;
+    color: var(--danger-text);
+    font-size: 11px;
+    word-break: break-all;
+    display: none;
+  }
+  .error-box.show { display: block; }
+
+  /* Controls */
+  .controls { width: 100%; max-width: var(--max-w); margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+  label.ctrl-label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 5px; }
+
+  input[type=text].text-input, input[type=password].text-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    -webkit-appearance: none;
+  }
+
+  .row { display: flex; gap: 8px; }
+
+  select.ctrl-select {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+  }
+
+  .slider-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .slider-group label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; }
+  input[type=range] { width: 100px; accent-color: #fff; cursor: pointer; }
+  input[type=color] { width: 34px; height: 28px; border: 1px solid var(--border); background: none; cursor: pointer; border-radius: 4px; padding: 0; }
+
+  /* Font grid */
+  .font-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+  }
+  .font-card {
+    padding: 9px 6px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .font-card.active { background: #fff; border-color: #fff; }
+  .font-card .preview { font-size: 15px; font-weight: 700; color: #ccc; line-height: 1.3; }
+  .font-card.active .preview { color: #000; }
+  .font-card .name { font-size: 9px; color: #666; margin-top: 3px; }
+  .font-card.active .name { color: #444; }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 8px; }
+  .btn-primary {
+    flex: 1; padding: 14px;
+    background: #fff; color: #000;
+    font-weight: 700; font-size: 15px;
+    border: none; border-radius: var(--radius);
+    cursor: pointer; font-family: inherit;
+    transition: opacity 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-primary:disabled { background: #222; color: #555; cursor: not-allowed; }
+  .btn-secondary {
+    flex: 1; padding: 14px;
+    background: var(--surface); color: #fff;
+    font-weight: 700; font-size: 15px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    cursor: pointer; font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-secondary:disabled { color: #555; cursor: not-allowed; }
+
+  /* Save modal */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.94);
+    z-index: 999;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal-hint { font-size: 13px; color: #bbb; margin-bottom: 14px; text-align: center; line-height: 1.6; }
+  .modal-hint b { color: #fff; }
+  .modal-img { max-width: 100%; max-height: 65dvh; border-radius: 10px; display: block; }
+  .modal-close {
+    margin-top: 16px;
+    background: #333; border: none;
+    color: #fff; font-size: 14px;
+    padding: 10px 28px; border-radius: 20px; cursor: pointer;
+  }
+  .modal-download {
+    margin-top: 10px;
+    background: #fff; border: none;
+    color: #000; font-size: 14px; font-weight: 700;
+    padding: 10px 28px; border-radius: 20px; cursor: pointer;
+  }
+
+  @media (min-width: 600px) {
+    body { padding-top: 40px; }
+    h1 { font-size: 22px; }
+    .font-grid { grid-template-columns: repeat(5, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<h1>📰 카드뉴스 제목 생성기</h1>
+<p class="subtitle">이미지 업로드 → AI 제목 생성 → 저장</p>
+
+<!-- API Key -->
+<div class="card">
+  <details class="api-section" id="apiDetails">
+    <summary>API 키 설정 <span class="arrow">▶</span></summary>
+    <div class="api-row">
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+      <button onclick="saveApiKey()">저장</button>
+    </div>
+    <p class="api-status" id="apiStatus">미설정</p>
+    <p style="font-size:10px;color:#555;margin-top:6px;">
+      키는 이 기기 브라우저에만 저장돼요.
+      <a href="https://console.anthropic.com" target="_blank" style="color:#888;">발급받기 →</a>
+    </p>
+  </details>
+</div>
+
+<!-- Upload -->
+<div id="uploadZone" class="upload-zone card" style="margin-top:12px;" onclick="document.getElementById('fileInput').click()">
+  <div class="icon">🖼️</div>
+  <div class="label">탭해서 이미지 올리기</div>
+</div>
+<input type="file" id="fileInput" accept="image/*" style="display:none">
+
+<!-- Preview -->
+<div id="previewWrap" class="preview-wrap card" style="margin-top:12px;display:none;">
+  <img id="previewImg" alt="uploaded">
+  <div id="textOverlay" class="overlay bottom" style="display:none;">
+    <div id="overlayLine1" class="overlay-line"></div>
+    <div id="overlayLine2" class="overlay-line" style="margin-top:2px;"></div>
+  </div>
+</div>
+<button class="change-btn" id="changeBtn" style="display:none;" onclick="document.getElementById('fileInput').click()">이미지 바꾸기</button>
+
+<!-- Error -->
+<div class="error-box" id="errorBox"></div>
+
+<!-- Controls -->
+<div class="controls">
+  <div>
+    <label class="ctrl-label">제목 편집</label>
+    <input type="text" class="text-input" id="line1" placeholder="첫 번째 줄" oninput="updateOverlay()">
+    <input type="text" class="text-input" id="line2" placeholder="두 번째 줄 (선택)" style="margin-top:7px;" oninput="updateOverlay()">
+  </div>
+
+  <div class="row">
+    <div style="flex:1">
+      <label class="ctrl-label">위치</label>
+      <select class="ctrl-select" id="posSelect" onchange="updateOverlay()">
+        <option value="bottom">하단</option>
+        <option value="center">중앙</option>
+        <option value="top">상단</option>
+      </select>
+    </div>
+  </div>
+
+  <div>
+    <label class="ctrl-label">글씨체</label>
+    <div class="font-grid" id="fontGrid"></div>
+  </div>
+
+  <div class="slider-row">
+    <div class="slider-group">
+      <label id="fsizeLabel">크기 44px</label>
+      <input type="range" id="fsizeRange" min="16" max="72" value="44" oninput="updateOverlay()">
+    </div>
+    <div class="slider-group">
+      <label id="opacityLabel">배경 55%</label>
+      <input type="range" id="opacityRange" min="0" max="90" value="55" oninput="updateOverlay()">
+    </div>
+    <div class="slider-group">
+      <label>글자색</label>
+      <input type="color" id="colorPicker" value="#ffffff" oninput="updateOverlay()">
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" id="generateBtn" onclick="generateTitle()" disabled>✨ AI 제목 생성</button>
+    <button class="btn-secondary" id="saveBtn" onclick="handleSave()" disabled>📷 저장하기</button>
+  </div>
+</div>
+
+<!-- Save modal -->
+<div class="modal-backdrop" id="modal">
+  <p class="modal-hint">
+    📱 <b>길게 누르면</b> 사진첩에 저장<br>
+    💻 아래 <b>다운로드</b> 버튼으로 저장
+  </p>
+  <img class="modal-img" id="modalImg" alt="result">
+  <button class="modal-download" onclick="downloadResult()">⬇ 다운로드</button>
+  <button class="modal-close" onclick="document.getElementById('modal').classList.remove('show')">닫기</button>
+</div>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+const FONTS = [
+  { label: "기본 고딕",   value: "'Apple SD Gothic Neo','Noto Sans KR',sans-serif" },
+  { label: "나눔고딕",    value: "'Nanum Gothic',sans-serif" },
+  { label: "나눔명조",    value: "'Nanum Myeongjo',serif" },
+  { label: "블랙한산스",  value: "'Black Han Sans',sans-serif" },
+  { label: "주아",        value: "'Jua',sans-serif" },
+  { label: "도현",        value: "'Do Hyeon',sans-serif" },
+  { label: "개이득",      value: "'Gaegu',cursive" },
+  { label: "해바라기",    value: "'Sunflower',sans-serif" },
+  { label: "나눔펜",      value: "'Nanum Pen Script',cursive" },
+];
+
+let selectedFont = FONTS[0].value;
+let imgDataUrl = null;
+let apiBase64 = null;
+let resultDataUrl = null;
+
+// Init font grid
+const grid = document.getElementById('fontGrid');
+FONTS.forEach((f, i) => {
+  const card = document.createElement('div');
+  card.className = 'font-card' + (i === 0 ? ' active' : '');
+  card.innerHTML = `<div class="preview" style="font-family:${f.value}">가나다</div><div class="name">${f.label}</div>`;
+  card.onclick = () => {
+    document.querySelectorAll('.font-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    selectedFont = f.value;
+    updateOverlay();
+  };
+  grid.appendChild(card);
+});
+
+// API Key
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) return;
+  localStorage.setItem('anthropic_api_key', key);
+  document.getElementById('apiStatus').textContent = '✅ 저장됨';
+  document.getElementById('apiStatus').className = 'api-status ok';
+  document.getElementById('apiDetails').removeAttribute('open');
+  checkApiKey();
+}
+function checkApiKey() {
+  const key = localStorage.getItem('anthropic_api_key');
+  const status = document.getElementById('apiStatus');
+  const input = document.getElementById('apiKeyInput');
+  if (key) {
+    input.value = key;
+    status.textContent = '✅ API 키 설정됨';
+    status.className = 'api-status ok';
+  } else {
+    status.textContent = '⚠️ API 키를 입력해주세요';
+    status.className = 'api-status no';
+    document.getElementById('apiDetails').setAttribute('open', '');
+  }
+}
+checkApiKey();
+
+// File input
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) handleFile(file);
+  e.target.value = '';
+});
+
+// Drag and drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => e.preventDefault());
+zone.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) { showError('이미지 파일만 가능해요'); return; }
+  clearError();
+  const reader = new FileReader();
+  reader.onload = async e => {
+    imgDataUrl = e.target.result;
+    document.getElementById('previewImg').src = imgDataUrl;
+    document.getElementById('uploadZone').style.display = 'none';
+    document.getElementById('previewWrap').style.display = 'block';
+    document.getElementById('changeBtn').style.display = 'block';
+    document.getElementById('generateBtn').disabled = false;
+    document.getElementById('saveBtn').disabled = false;
+    clearOverlay();
+    apiBase64 = await compressImage(imgDataUrl);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function compressImage(dataUrl, maxPx = 800) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w > maxPx || h > maxPx) {
+        if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+        else { w = Math.round(w * maxPx / h); h = maxPx; }
+      }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', 0.78).split(',')[1]);
+    };
+    img.onerror = () => resolve(dataUrl.split(',')[1]);
+    img.src = dataUrl;
+  });
+}
+
+function updateOverlay() {
+  const l1 = document.getElementById('line1').value;
+  const l2 = document.getElementById('line2').value;
+  const pos = document.getElementById('posSelect').value;
+  const fsize = document.getElementById('fsizeRange').value;
+  const opacity = document.getElementById('opacityRange').value;
+  const color = document.getElementById('colorPicker').value;
+
+  document.getElementById('fsizeLabel').textContent = `크기 ${fsize}px`;
+  document.getElementById('opacityLabel').textContent = `배경 ${opacity}%`;
+
+  const overlay = document.getElementById('textOverlay');
+  const ol1 = document.getElementById('overlayLine1');
+  const ol2 = document.getElementById('overlayLine2');
+
+  if (!l1 && !l2) { overlay.style.display = 'none'; return; }
+
+  overlay.style.display = 'flex';
+  overlay.className = `overlay ${pos}`;
+
+  const op = opacity / 100;
+  const op2 = Math.min(parseFloat(op) + 0.15, 1);
+  if (pos === 'bottom') overlay.style.background = `linear-gradient(to bottom,transparent,rgba(0,0,0,${op}) 28%,rgba(0,0,0,${op2}))`;
+  else if (pos === 'top') overlay.style.background = `linear-gradient(to top,transparent,rgba(0,0,0,${op}) 28%,rgba(0,0,0,${op2}))`;
+  else overlay.style.background = `rgba(0,0,0,${op})`;
+
+  ol1.textContent = l1;
+  ol1.style.fontSize = fsize + 'px';
+  ol1.style.fontFamily = selectedFont;
+  ol1.style.color = color;
+  ol1.style.display = l1 ? 'block' : 'none';
+
+  ol2.textContent = l2;
+  ol2.style.fontSize = fsize + 'px';
+  ol2.style.fontFamily = selectedFont;
+  ol2.style.color = color;
+  ol2.style.display = l2 ? 'block' : 'none';
+}
+
+function clearOverlay() {
+  document.getElementById('line1').value = '';
+  document.getElementById('line2').value = '';
+  document.getElementById('textOverlay').style.display = 'none';
+}
+
+// Generate title
+async function generateTitle() {
+  const apiKey = localStorage.getItem('anthropic_api_key');
+  if (!apiKey) { showError('API 키를 먼저 설정해주세요'); document.getElementById('apiDetails').setAttribute('open',''); return; }
+  if (!apiBase64) { showError('이미지를 먼저 올려주세요'); return; }
+
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 생성 중...';
+  clearError();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: apiBase64 } },
+            { type: 'text', text: `이 이미지에 어울리는 SNS 카드뉴스 헤드라인을 JSON으로만 반환해줘.
+뉴스 헤드라인 스타일, 한 줄 15자 내외, 최대 2줄. 자연스럽지 않으면 1줄만.
+다른 텍스트 없이 JSON만: {"line1":"제목1","line2":"두번째줄또는빈문자열"}` }
+          ]
+        }]
+      }),
+    });
+
+    const rawText = await res.text();
+    let data;
+    try { data = JSON.parse(rawText); } catch { throw new Error('응답 파싱 불가: ' + rawText.slice(0, 100)); }
+    if (!res.ok) throw new Error(data?.error?.message || `오류 ${res.status}`);
+
+    const txt = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    const m = txt.match(/\{[\s\S]*?\}/);
+    if (!m) throw new Error('제목 생성 실패. 다시 시도해주세요.');
+    const p = JSON.parse(m[0]);
+    document.getElementById('line1').value = p.line1 || '';
+    document.getElementById('line2').value = p.line2 || '';
+    updateOverlay();
+  } catch (e) {
+    showError('생성 오류: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ AI 제목 생성';
+  }
+}
+
+// Save
+async function handleSave() {
+  if (!imgDataUrl) return;
+  const canvas = document.getElementById('canvas');
+  const img = new Image();
+  img.onload = () => {
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+
+    const l1 = document.getElementById('line1').value;
+    const l2 = document.getElementById('line2').value;
+    const lines = [l1, l2].filter(Boolean);
+
+    if (lines.length) {
+      const fsize = parseInt(document.getElementById('fsizeRange').value);
+      const opacity = parseInt(document.getElementById('opacityRange').value);
+      const color = document.getElementById('colorPicker').value;
+      const pos = document.getElementById('posSelect').value;
+      const sc = img.naturalWidth / 500;
+      const sf = Math.round(fsize * sc);
+      const lh = sf * 1.45;
+      const bh = lines.length * lh + 70 * sc;
+      const op = opacity / 100;
+      const sy = pos === 'bottom' ? img.naturalHeight - bh : pos === 'center' ? (img.naturalHeight - bh) / 2 : 0;
+
+      const g = ctx.createLinearGradient(0, sy, 0, sy + bh);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(0.3, `rgba(0,0,0,${op})`);
+      g.addColorStop(1, `rgba(0,0,0,${Math.min(op + 0.15, 1)})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, sy, img.naturalWidth, bh);
+      ctx.font = `bold ${sf}px ${selectedFont}`;
+      ctx.fillStyle = color;
+      ctx.textAlign = 'left';
+      ctx.shadowColor = 'rgba(0,0,0,0.85)';
+      ctx.shadowBlur = 10 * sc;
+      lines.forEach((l, i) => ctx.fillText(l, 36 * sc, sy + 52 * sc + i * lh));
+    }
+
+    resultDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    document.getElementById('modalImg').src = resultDataUrl;
+    document.getElementById('modal').classList.add('show');
+  };
+  img.src = imgDataUrl;
+}
+
+function downloadResult() {
+  if (!resultDataUrl) return;
+  const a = document.createElement('a');
+  a.href = resultDataUrl;
+  a.download = 'card_news.jpg';
+  a.click();
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.classList.add('show');
+}
+function clearError() {
+  document.getElementById('errorBox').classList.remove('show');
+}
+</script>
+</body>
+</html>
